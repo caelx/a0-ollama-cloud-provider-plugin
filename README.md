@@ -22,11 +22,13 @@ Set this environment variable before starting Agent Zero:
 export OLLAMA_CLOUD_API_KEY=your_api_key_here
 ```
 
-The provider catalog endpoint is:
+The provider catalog endpoint is local to the plugin:
 
 ```text
-https://ollama.com/api/tags
+http://127.0.0.1:5000/api/plugins/provider_ollama_cloud/models
 ```
+
+That endpoint reads Ollama's live `/api/tags` catalog and restricts the presented chat models to Ollama library entries with all three filters: `cloud`, `tools`, and `thinking`.
 
 ## Development
 

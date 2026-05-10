@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[2]
 PLUGIN_NAME="provider_ollama_cloud"
 PROVIDER_ID="ollama_cloud"
 ENV_VAR="OLLAMA_CLOUD_API_KEY"
-HAS_API=False
+HAS_API=True
 def install_package_alias() -> None:
     sys.path.insert(0, str(ROOT))
     usr=sys.modules.setdefault("usr", types.ModuleType("usr")); usr.__path__=[]
@@ -14,15 +14,27 @@ def install_package_alias() -> None:
 def test_root_plugin_metadata_is_installable():
     assert (ROOT/"plugin.yaml").is_file(); assert (ROOT/"conf"/"model_providers.yaml").is_file(); assert (ROOT/"webui"/"config.html").is_file()
     assert f"name: {PLUGIN_NAME}" in (ROOT/"plugin.yaml").read_text(encoding="utf-8")
-    assert PROVIDER_ID + ":" in (ROOT/"conf"/"model_providers.yaml").read_text(encoding="utf-8")
+    model_config=(ROOT/"conf"/"model_providers.yaml").read_text(encoding="utf-8")
+    assert PROVIDER_ID + ":" in model_config
+    assert f"/api/plugins/{PLUGIN_NAME}/models" in model_config
 def test_missing_api_key_returns_clear_status(monkeypatch):
     if not HAS_API: return
     install_package_alias(); monkeypatch.delenv(ENV_VAR, raising=False)
-    payload,status=asyncio.run(importlib.import_module(f"usr.plugins.{PLUGIN_NAME}.helpers.catalog").fetch_catalog())
-    assert payload is None; assert status == "missing_api_key"
+    catalog=importlib.import_module(f"usr.plugins.{PLUGIN_NAME}.helpers.catalog")
+    async def fake_fetch_catalog(): return ({"models":[{"name":"gpt-oss:20b"}]}, "ok")
+    async def fake_fetch_filtered_families(): return (["gpt-oss"], "ok")
+    monkeypatch.setattr(catalog,"fetch_catalog",fake_fetch_catalog); monkeypatch.setattr(catalog,"fetch_filtered_families",fake_fetch_filtered_families)
+    response=asyncio.run(catalog.model_response())
+    assert response["meta"]["required_env_var"] == ENV_VAR
+    assert response["meta"]["credentials_present"] is False
 def test_provider_specific_contracts(monkeypatch, tmp_path):
     install_package_alias()
-    if PLUGIN_NAME == "provider_opencode_zen_free":
+    if PLUGIN_NAME == "provider_ollama_cloud":
+        m=importlib.import_module("usr.plugins.provider_ollama_cloud.helpers.catalog")
+        html='''<li x-test-model><span x-test-search-response-title>gpt-oss</span></li><li x-test-model><span x-test-search-response-title>kimi-k2-thinking</span></li>'''
+        assert m.extract_filtered_families(html) == ["gpt-oss", "kimi-k2-thinking"]
+        assert m.filter_model_ids(["gpt-oss:20b","gpt-oss:120b","gemma3:4b"], ["gpt-oss"]) == (["gpt-oss:120b","gpt-oss:20b"], {"missing_required_filters":1})
+    elif PLUGIN_NAME == "provider_opencode_zen_free":
         m=importlib.import_module("usr.plugins.provider_opencode_zen_free.helpers.filter")
         assert m.filter_free_models(m.extract_model_ids({"data":[{"id":"big-pickle"},{"id":"custom-free"},{"id":"paid"}]})) == (["big-pickle","custom-free"], {"unknown_free_status":1})
     elif PLUGIN_NAME == "provider_openrouter_free":
