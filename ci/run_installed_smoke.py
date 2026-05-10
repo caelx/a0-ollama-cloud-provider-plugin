@@ -4,6 +4,7 @@ import asyncio, importlib, json, sys, types
 from pathlib import Path
 PLUGIN_NAME="provider_ollama_cloud"
 PROVIDER_ID="ollama_cloud"
+EXPECTED_ENDPOINT=f"http://127.0.0.1:80/api/plugins/{PLUGIN_NAME}/models"
 HAS_API=True
 def install_package_alias() -> None:
     root=Path.cwd()
@@ -15,6 +16,8 @@ def main() -> int:
     result={"plugin_name":PLUGIN_NAME,"provider_id":PROVIDER_ID,"plugin_yaml":Path("plugin.yaml").is_file(),"model_config":Path("conf/model_providers.yaml").read_text(encoding="utf-8"),"webui_config":Path("webui/config.html").is_file()}
     assert result["plugin_yaml"]
     assert PROVIDER_ID + ":" in result["model_config"]
+    assert EXPECTED_ENDPOINT in result["model_config"]
+    assert "127.0.0.1:5000" not in result["model_config"]
     assert result["webui_config"]
     if HAS_API:
         install_package_alias()
