@@ -1,5 +1,7 @@
 # Ollama Cloud Provider
 
+<img src="webui/thumbnail.png" alt="Ollama Cloud Provider logo" width="160">
+
 Adds Ollama Cloud as an Agent Zero chat model provider.
 
 This is a root-layout Agent Zero community plugin. Agent Zero installs it from Git because `plugin.yaml` lives at the repository root.
